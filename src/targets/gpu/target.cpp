@@ -226,7 +226,9 @@ struct pipeline_factory
             dead_code_elimination{},
             rewrite_gelu{options.fast_math},
             optimize_module{},
-            layout_convolution{.order                          = backend_opts.convolution_layout,
+            // Quantization capture compiles disable NHWC so calibration sees the reference layout.
+            layout_convolution{.order = options.disable_nhwc ? layout_convolution::channels_first
+                                                             : backend_opts.convolution_layout,
                                .output_channels_last_threshold = missing_fp32_mma ? 8u : 0u,
                                .output_channels_last_types     = {shape::float_type}},
             dead_code_elimination{},
@@ -280,6 +282,8 @@ struct pipeline_factory
             get_context()->is_cross_compile() ? std::numeric_limits<std::size_t>::max() : 0;
         return {
             auto_contiguous{},
+            dead_code_elimination{},
+            eliminate_contiguous{"contiguous"},
             dead_code_elimination{},
             lowering{get_context(), options.offload_copy},
             eliminate_contiguous{"gpu::contiguous"},

@@ -132,6 +132,7 @@ Full documentation for MIGraphX is available at
 * Updated python API to allow getting and adding debug symbols from instructions (#4803).
 * Refactored ONNX `RNN`, `GRU`, and `LSTM` parsing to use operator builders, expanding the recurrent ops at parse time instead of in the `rewrite_rnn` pass (#4606).
 * Changed the GPU `channelwise_conv` kernel to hold weights and accumulate in fp32 before casting to the output type, improving accuracy for fp16 inputs (#4809).
+* Updated GPU stream-count, NHWC layout, and MLIR attention defaults to adapt to the detected architecture (#4707).
 
 ### Resolved issues
 
@@ -171,6 +172,7 @@ Full documentation for MIGraphX is available at
 * Add matcher to simplify_algebra to find and replace pow(x, 2) with mul(x, x) (#4681).
 * Add matcher to `fuse_attention` that removes Q/DQ pairs from attention blocks (#4900).
 * Added a pass `rewrite_convolution` to rewrite `convolution_backwards` to match the v4r1 algorithm used in MIOpen for performance (#4928).
+* Stabilized quantized GPU NHWC compilation on architecture-selected layout defaults (#4707).
 
 ### Removed
 

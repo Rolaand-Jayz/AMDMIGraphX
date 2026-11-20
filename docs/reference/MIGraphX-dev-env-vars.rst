@@ -765,10 +765,19 @@ Advanced settings
       | Default: A null stream can't be used for stream handling.
 
   * - | ``MIGRAPHX_NSTREAMS``
-      | Sets the number of HIP streams to use in the GPU. 
-      
-    - | Takes a positive integer.
-      | Default: one stream will be used.
+      | Sets the number of HIP streams to use in the GPU.
+
+    - | Takes a non-negative integer.
+      | Set to ``0`` to use the adaptive default.
+      | Default: adaptive stream count based on GPU size.
+      |
+      | Current defaults:
+      | ``1`` stream for GPUs with fewer than 32 compute units
+      | ``2`` streams for GPUs with 32 to 63 compute units
+      | ``3`` streams for GPUs with 64 to 95 compute units
+      | ``4`` streams for GPUs with 96 or more compute units
+      |
+      | Note: when ``MIGRAPHX_ENABLE_NULL_STREAM=1`` is set, the adaptive default falls back to ``1`` stream.
 
   * - | ``MIGRAPHX_TRACE_BENCHMARKING``
       | Sets the verbosity of benchmarking traces. 

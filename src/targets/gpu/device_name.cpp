@@ -31,6 +31,9 @@
 #include <hip/hip_runtime_api.h>
 
 #include <iostream>
+#include <mutex>
+#include <string_view>
+#include <unordered_map>
 
 namespace migraphx {
 inline namespace MIGRAPHX_INLINE_NS {
@@ -61,6 +64,59 @@ std::string get_device_name()
     return props.gcnArchName;
 }
 
+namespace {
+
+std::string normalize_gfx_name(std::string_view gfx_name)
+{
+    return get_gfx_name(std::string{gfx_name});
+}
+
+bool gfx_is_mi3xx_or_newer(std::string_view gfx_name)
+{
+    const auto device_name = normalize_gfx_name(gfx_name);
+    const bool is_gfx94    = starts_with(device_name, "gfx94") and device_name >= "gfx942";
+    const bool is_gfx95    = starts_with(device_name, "gfx95") and device_name >= "gfx950";
+    return is_gfx94 or is_gfx95;
+}
+
+// hipGetDeviceProperties is expensive and the feature probes below are queried many times
+// per compile, so the normalized gfx name of the current device is cached per device id.
+// Context overloads keep reading the context's device so cross-compilation is unaffected.
+std::string get_cached_gfx_name()
+{
+    static std::mutex cache_mutex;
+    static std::unordered_map<int, std::string> cache;
+
+    const auto device_id = get_device_id();
+    std::lock_guard<std::mutex> lock(cache_mutex);
+    auto it = cache.find(device_id);
+    if(it == cache.end())
+        it = cache.emplace(device_id, get_gfx_name(get_device_name())).first;
+    return it->second;
+}
+
+} // namespace
+
+bool gfx_is_navi(std::string_view gfx_name)
+{
+    const auto device_name = normalize_gfx_name(gfx_name);
+    return starts_with(device_name, "gfx11") or starts_with(device_name, "gfx12");
+}
+
+bool gfx_prefers_nhwc_layout(std::string_view gfx_name)
+{
+    return gfx_is_navi(gfx_name) or gfx_is_mi3xx_or_newer(gfx_name);
+}
+
+bool gfx_prefers_nhwc_layout() { return gfx_prefers_nhwc_layout(get_cached_gfx_name()); }
+
+bool gfx_prefers_mlir_attention(std::string_view gfx_name)
+{
+    return gfx_is_mi3xx_or_newer(gfx_name);
+}
+
+bool gfx_prefers_mlir_attention() { return gfx_prefers_mlir_attention(get_cached_gfx_name()); }
+
 static bool gfx_has_fp8fnuz_intrinsics_impl(const std::string& gfx_name)
 {
     return (starts_with(gfx_name, "gfx94"));
@@ -68,7 +124,7 @@ static bool gfx_has_fp8fnuz_intrinsics_impl(const std::string& gfx_name)
 
 bool gfx_has_fp8fnuz_intrinsics()
 {
-    return gfx_has_fp8fnuz_intrinsics_impl(get_gfx_name(get_device_name()));
+    return gfx_has_fp8fnuz_intrinsics_impl(get_cached_gfx_name());
 }
 
 bool gfx_has_fp8fnuz_intrinsics(const context& ctx)
@@ -86,7 +142,7 @@ static bool gfx_has_fp8ocp_intrinsics_impl(const std::string& gfx_name)
 
 bool gfx_has_fp8ocp_intrinsics()
 {
-    return gfx_has_fp8ocp_intrinsics_impl(get_gfx_name(get_device_name()));
+    return gfx_has_fp8ocp_intrinsics_impl(get_cached_gfx_name());
 }
 
 bool gfx_has_fp8ocp_intrinsics(const context& ctx)
@@ -101,7 +157,7 @@ static bool gfx_has_bf16_intrinsics_impl(const std::string& gfx_name)
 
 bool gfx_has_bf16_intrinsics()
 {
-    return gfx_has_bf16_intrinsics_impl(get_gfx_name(get_device_name()));
+    return gfx_has_bf16_intrinsics_impl(get_cached_gfx_name());
 }
 
 bool gfx_has_bf16_intrinsics(const context& ctx)
@@ -114,7 +170,7 @@ static bool gfx_has_mx_intrinsics_impl(const std::string& gfx_name)
     return starts_with(gfx_name, "gfx9") and gfx_name >= "gfx950";
 }
 
-bool gfx_has_mx_intrinsics() { return gfx_has_mx_intrinsics_impl(get_gfx_name(get_device_name())); }
+bool gfx_has_mx_intrinsics() { return gfx_has_mx_intrinsics_impl(get_cached_gfx_name()); }
 
 bool gfx_has_mx_intrinsics(const context& ctx)
 {
@@ -130,7 +186,7 @@ static bool gfx_default_rocblas_impl(const std::string& gfx_name)
                 : (gfx_name == "gfx90a"));
 }
 
-bool gfx_default_rocblas() { return gfx_default_rocblas_impl(get_gfx_name(get_device_name())); }
+bool gfx_default_rocblas() { return gfx_default_rocblas_impl(get_cached_gfx_name()); }
 
 bool gfx_default_rocblas(const context& ctx)
 {
@@ -151,7 +207,7 @@ bool hipblaslt_supported()
 #if !MIGRAPHX_USE_HIPBLASLT
     return false;
 #else
-    return hipblaslt_supported_impl(get_gfx_name(get_device_name()));
+    return hipblaslt_supported_impl(get_cached_gfx_name());
 #endif
 }
 

@@ -155,16 +155,9 @@ bool mlir_attention_enabled(context* ctx, const std::vector<std::string>& use_sp
         return false;
     if(env_op_usage().is_rejected("attention"))
         return false;
-    if(ctx != nullptr)
-    {
-        // Enable attention by default for mi300/350
-        const auto supported_prefixes = {"gfx94", "gfx95"};
-        const auto& device_name       = ctx->get_current_device().get_gfx_name();
-        if(std::any_of(supported_prefixes.begin(),
-                       supported_prefixes.end(),
-                       [&](const char* prefix) { return starts_with(device_name, prefix); }))
-            return true;
-    }
+    // Enable attention by default for MI300-class and newer data center accelerators.
+    if(ctx != nullptr and gfx_prefers_mlir_attention(ctx->get_current_device().get_gfx_name()))
+        return true;
     if(env_op_usage().is_requested("attention"))
         return true;
     // compile_options is checked last: unlike the env var rejection above, a rejection here
@@ -174,6 +167,7 @@ bool mlir_attention_enabled(context* ctx, const std::vector<std::string>& use_sp
         return false;
     return ops.is_requested("attention");
 #else
+    (void)ctx;
     return false;
 #endif
 }
@@ -1637,7 +1631,7 @@ void fuse_mlir::apply(module_pass_manager& mpm) const
 #ifdef MIGRAPHX_MLIR
     std::size_t counter     = 0;
     const auto& device_name = ctx == nullptr ? "" : ctx->get_current_device().get_gfx_name();
-    const bool is_navi = starts_with(device_name, "gfx11") or starts_with(device_name, "gfx12");
+    const bool is_navi      = gfx_is_navi(device_name);
     const auto ops          = parse_op_usage(use_specific_ops);
 
     auto get_mode = [&](std::string_view option, mlir_mode m1, mlir_mode m2 = mlir_mode::fast) {

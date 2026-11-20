@@ -44,6 +44,7 @@ struct compile_options
 
     bool fast_math       = true;
     bool exhaustive_tune = false;
+    bool disable_nhwc    = false;
 
     compile_modes compile_mode = compile_modes::balanced;
     /**
