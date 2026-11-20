@@ -105,11 +105,6 @@ struct hip_compile_cache_key_hash
 
 using hip_compile_cache_entry = std::shared_future<std::vector<std::vector<char>>>;
 
-bool same_future(const hip_compile_cache_entry& x, const hip_compile_cache_entry& y)
-{
-    return not x.owner_before(y) and not y.owner_before(x);
-}
-
 struct hip_compile_cache
 {
     template <class F>
@@ -117,12 +112,14 @@ struct hip_compile_cache
     {
         std::shared_ptr<std::promise<std::vector<std::vector<char>>>> promise;
         hip_compile_cache_entry future;
+        hip_compile_cache_key failed_key;
         bool should_compile = false;
         {
             std::lock_guard<std::mutex> lock(mutex);
             auto it = cache.find(key);
             if(it == cache.end())
             {
+                failed_key     = key;
                 promise        = std::make_shared<std::promise<std::vector<std::vector<char>>>>();
                 future         = promise->get_future().share();
                 it             = cache.emplace(std::move(key), future).first;
@@ -141,11 +138,9 @@ struct hip_compile_cache
             {
                 promise->set_exception(std::current_exception());
                 std::lock_guard<std::mutex> lock(mutex);
-                auto it = std::find_if(cache.begin(), cache.end(), [&](const auto& item) {
-                    return same_future(item.second, future);
-                });
-                if(it != cache.end())
-                    cache.erase(it);
+                // Only the thread that inserted this key compiles it, so the entry under
+                // failed_key is ours; drop it so a later call can retry the compile.
+                cache.erase(failed_key);
             }
         }
 
