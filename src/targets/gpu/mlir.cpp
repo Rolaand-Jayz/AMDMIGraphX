@@ -939,8 +939,8 @@ struct mlir_program
     {
         // 1st pipeline to call
         run_high_level_pipeline();
-        std::string tuning_cfg_path = string_value_of(MIGRAPHX_MLIR_TUNING_CFG{});
-        if(not tuning_cfg_path.empty())
+        std::string tuning_db_path = string_value_of(MIGRAPHX_MLIR_TUNING_DB{});
+        if(not tuning_db_path.empty())
             get_module_tuned();
         if(solution.is_null())
             MIGRAPHX_THROW("MLIR backend pipeline requires a tuning solution");

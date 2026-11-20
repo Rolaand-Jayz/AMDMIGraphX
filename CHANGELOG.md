@@ -123,6 +123,7 @@ Full documentation for MIGraphX is available at
 * Changed parsing of ONNX ops like ConstantOfShape to insert undefined if expected shape has 0 elements (#4567).
 * Updated the ONNX clip operator to support opset 13 (#4518).
 * Updated `argmin` and `argmax` ops to be implemented as reduction ops, so they now have JIT support and can fuse (#4620).
+* Improved GPU MLIR defaults and code generation compatibility, including MLIR-off builds and tuning DB usage (#4668).
 * Replaced usages of `std::cout` and `std::cerr` with the logger (#4732).
 * Converted RNN variable sequence length operations (`rnn_var_sl_shift_sequence`, `rnn_var_sl_shift_output`, `rnn_var_sl_last_output`) from device implementation to JIT compilation (#4755).
 * Allowing all grouped convolutions to go through rocMLIR. Previously only allowed 2D convolutions (#4815).
@@ -168,6 +169,7 @@ Full documentation for MIGraphX is available at
 * Added early return to avoid unnecessary fill operation if tile sizes out of range (#4514).
 * Improved `find_attention` to move evaluable constant inputs inside the operator, allowing rocMLIR to detect causal masks (#4660).
 * Added early return for `find_conv_dot_horiz_fusion` matcher based on if operator output size is less than two (#4662).
+* Extended MLIR pointwise fusion to cover PReLU patterns (#4668).
 * Reduced undersized GPU partitions and tuned pointwise launch bounds in scheduling hot paths (#4668).
 * Cached repeated HIP compilation and MIOpen solution lookups for repeated GPU compile paths (#4668).
 * Add matcher to simplify_algebra to find and replace pow(x, 2) with mul(x, x) (#4681).
